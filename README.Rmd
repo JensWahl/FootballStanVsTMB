@@ -1,44 +1,46 @@
-library(TMB)
-library(rstan)
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
 library(data.table)
 library(ggplot2)
 library(patchwork)
-library(ggrepel)
-theme_set(theme_bw())
-source("functions.R")
-
-options(mc.cores = parallel::detectCores())
-rstan_options(auto_write = TRUE)
-fig_dir = "figs/"
-n_games = c(5, 10, 20, 40, 80)
-stan_mod = stan_model("poisson_goals_model.stan")
+library(TMB)
+library(rstan)
 compile("poisson_goals_model.cpp")
 dyn.load(dynlib("poisson_goals_model"))
+theme_set(theme_bw())
+source("functions.R")
+fig_dir = "figs/"
+```
 
-fit_models = FALSE 
+# FootballStanVsTMB
+This repository compares Stan and TMB for modeling of football results. 
 
-if (fit_models) {
-  res = lapply(n_games, function(n_games) {
-    cat("Fitting for", n_games, "games\n")
-    data = simulate_games(n_games = n_games)
-    tmb_fit = fit_tmb(data$data)
-    stan_fit = fit_stan(data$data, stan_mod)
-    return(list(tmb = tmb_fit, 
-                stan = stan_fit))
-  })
-  
-  saveRDS(res, "sim_results.rds")
-} else {
-  res = readRDS("sim_results.rds")
-}
+Stan is a state-of-the-art platform for statistical modeling and high-performance statistical computation. It has become the go-to tool for Bayesian modeling. The R package TMB (Template Model Builder) is a frequentist alternative that performs maximum likelihood estimation where latent variables are integrated out of the likelihood using the Laplace approximation. Both Stan and TMB use automatic differentiation (AD) for accurate evaluation of derivatives.
 
+## Model
 
+```{r, include=FALSE}
+res = readRDS("sim_results.rds")
+n_games = c(5, 10, 20, 40, 80)
 dt_time = data.table(n_games = n_games * 19 * 20)
 dt_time[, TMB := sapply(res, \(x) as.double(x[["tmb"]]$time, units = "secs"))]
 dt_time[, Stan := sapply(res, \(x) as.double(x[["stan"]]$time, units = "secs"))]
-dt_time[, relative_time := Stan / TMB]
 dt_plot = melt(dt_time, id.vars = "n_games", variable.name = "Model", value.name = "Runtime")
+dt_time[, relative_time := Stan / TMB]
+```
 
+## Plots
+
+```{r}
 p1 = ggplot(dt_plot, aes(n_games, Runtime, color = Model)) +
   geom_point(size = 2.5) +
   geom_line(linewidth = 0.8) + 
@@ -56,6 +58,9 @@ p2 = ggplot(dt_time, aes(n_games, relative_time)) +
 ggsave(paste0(fig_dir, "relative_runtime.pdf"), plot = p2, width = 12, height = 8, units = "cm")
 
 p1 + p2
+```
+
+```{r}
 
 
 # Compare parameter estimates
@@ -83,5 +88,7 @@ for (i in c(1, 5)) {
 }
 
 plots[["1"]] / (plots[["5"]] + ggtitle("", subtitle = "")) +  plot_layout(guides = "collect") 
-ggsave(paste0(fig_dir, "param_estimates.pdf"), width = 12, height = 8, units = "cm")
+# ggsave(paste0(fig_dir, "param_estimates.pdf"), width = 12, height = 8, units = "cm")
+
+```
 

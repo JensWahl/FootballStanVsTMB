@@ -87,4 +87,21 @@ fit_stan = function(dt, mod) {
               time = end - start))
 }
 
+extract_params_tmb = function(obj) {
+  rep = sdreport(obj)
+  dt_tmb = as.data.table(summary(rep, select = "random"), keep.rownames = TRUE)
+  dt_tmb[, index := 1:.N, rn]
+  names(dt_tmb)[1:3] = c("param", "estimate", "std_error")
+  dt_tmb[, param_upper := qnorm(0.975, estimate, std_error)]
+  dt_tmb[, param_lower := qnorm(0.025, estimate, std_error)]
+  return(dt_tmb)
+}
 
+extract_params_stan = function(obj) {
+  dt_stan = as.data.table(summary(obj)$summary, keep.rownames = TRUE)
+  dt_stan = dt_stan[grepl("attack\\[|defense\\[|home\\[", rn)]
+  dt_stan[, rn := gsub("\\[\\d+\\]", "", rn)]
+  dt_stan[, index := 1:.N, rn]
+  setnames(dt_stan, c("rn", "mean", "sd", "2.5%", "97.5%"), c("param", "estimate", "std_error", "param_lower", "param_upper"))
+  return(dt_stan)
+}
