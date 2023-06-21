@@ -4,6 +4,8 @@
 # FootballStanVsTMB
 
 This repository compares Stan and TMB for modeling of football results.
+The model is taken from Tommy Odland’s [blogg
+post](https://tommyodland.com/articles/2022/the-2022-norwegian-football-elite-series/).
 
 Stan is a state-of-the-art platform for statistical modeling and
 high-performance statistical computation. It has become the go-to tool
@@ -15,7 +17,52 @@ Laplace approximation. Both Stan and TMB use automatic differentiation
 
 ## Model
 
-## Plots
+The number of goals scored by the home and away team in a match is
+modeled as a hierarchical model on the form:
+
+$$
+\begin{aligned}
+\text{home_goals}_i &\sim \text{poisson} \left( \theta^\text{h}_i \right) \\
+\text{away_goals}_i &\sim \text{poisson} \left( \theta^\text{a}_i \right) \\
+\theta^\text{h} &= \exp \left( \text{intercept} + \text{attack}_{\text{h}[i]} - \text{defence}_{\text{a}[i]} + \text{home}_{\text{h}[i]} \right) \\
+\theta^\text{a} &= \exp \left( \text{intercept} +
+\text{attack}_{\text{a}[i]} - \text{defence}_{\text{h}[i]} - \text{home}_{\text{h}[i]} \right) \\
+\text{attack}_{\text{a}[i]} &\sim \text{normal}(0, \sigma_a^2) \\
+\text{defence}_{\text{h}[i]} &\sim \text{normal}(0, \sigma_d^2) \\
+\text{home}_{\text{h}[i]} &\sim \text{normal}(0, \sigma_h^2)
+\end{aligned}
+$$
+
+The number of home goals is a function of a fixed intercept, the home
+teams attack strength minus the defense strength of the away time, and a
+home advantage effect. The attach, defense and home advantage effect are
+all random effects with normally distributed priors with unknown
+variance.
+
+For the Stan model we also have appropriate priors for the intercept and
+the variance of the random effects. The Stan model runs four chain of
+2000 samples, where the first 1000 is used as warmup, giving us 4000
+samples from the posterior distribution.
+
+## Run time
+
+The table below shows the run time for TMB and STAN for different number
+of observations (games). For smaller datasets TMB is about 100 times
+faster and for the biggest dataset of 30400 games it is about 500 times
+faster. In other words, a substantial speed up! This should not come as
+a surprise as the MCMC algorithm has to evaluate the posterior and it’s
+gradient for each sample, while TMB uses optimization to find parameter
+estimates, leading to a lot fewer evaluations of the likelihood.
+
+| n_games | TMB |   Stan | relative_time |
+|--------:|----:|-------:|--------------:|
+|    1900 | 0.7 |   75.5 |         107.0 |
+|    3800 | 1.1 |  214.8 |         201.0 |
+|    7600 | 1.8 |  623.2 |         348.9 |
+|   15200 | 3.9 | 1437.7 |         366.5 |
+|   30400 | 7.5 | 3777.3 |         503.5 |
+
+The figures below shows the run time as a function of number of games.
 
 ``` r
 p1 = ggplot(dt_plot, aes(n_games, Runtime, color = Model)) +
@@ -38,6 +85,8 @@ p1 + p2
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+## Parameter estimates
 
 ``` r
 
