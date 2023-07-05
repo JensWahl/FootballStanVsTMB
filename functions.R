@@ -1,5 +1,4 @@
-
-
+#' Simulate football games based on the Poisson model
 simulate_games = function(intercept = 0.16, 
                           sigma_attack = 0.3, 
                           sigma_defense = 0.2, 
@@ -39,6 +38,8 @@ simulate_games = function(intercept = 0.16,
 }
 
 
+#' Estimate parameters using TMB.
+#' dt - data.table with all games 
 fit_tmb = function(dt) {
   
   data = list(home_goals = dt[, home_goals], 
@@ -71,6 +72,9 @@ fit_tmb = function(dt) {
   
 }
 
+#' Estimate parameters using Stan
+#' dt - data.table with all games 
+#' mod - Compiled stan model. 
 fit_stan = function(dt, mod) {
   # Pass compiled model to avoid including it in the timing
   
